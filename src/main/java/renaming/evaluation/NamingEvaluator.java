@@ -14,6 +14,8 @@ import java.util.Map.Entry;
 import java.util.SortedSet;
 import java.util.logging.Logger;
 
+import codemining.java.codeutils.scopes.MethodScopeExtractor;
+import codemining.java.codeutils.scopes.TypenameScopeExtractor;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.DirectoryFileFilter;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -329,13 +331,17 @@ public class NamingEvaluator {
 			outputResult(identifier, renamings);
 		}
 
-		final ScopeType scope = identifier.getKey().scopeType;
-		int scopeIndex = 0;
-		for (int i = 0; i < ScopeType.values().length; i++) {
-			if (scope == ScopeType.values()[i]) {
-				scopeIndex = i;
+		int scopeIndex;
+		switch(identifier.getKey().type){
+			case MethodScopeExtractor.METHOD_CALL:
+				scopeIndex=2; //method;
 				break;
-			}
+			case TypenameScopeExtractor.TYPENAME:
+				scopeIndex=0;
+				break;
+			default:
+				scopeIndex=1;
+				break;
 		}
 		results[scopeIndex].count++;
 
