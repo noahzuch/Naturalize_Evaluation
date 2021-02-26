@@ -202,6 +202,7 @@ public class IdentifierNeighborsNGramLM extends AbstractNGramLM {
 
 		LOGGER.info("Vocabulary Built. Counting n-grams");
 		trainModel(files, false, false);
+		LOGGER.info("Counting n-grams finished.");
 	}
 
 	/**
@@ -210,14 +211,14 @@ public class IdentifierNeighborsNGramLM extends AbstractNGramLM {
 	 */
 	private void trainModel(final Collection<File> files,
 			final boolean performCleanups, final boolean addNewToksToVocabulary) {
-		final ParallelThreadPool threadPool = new ParallelThreadPool();
+		//final ParallelThreadPool threadPool = new ParallelThreadPool();
 
 		for (final File fi : files) {
-			threadPool.pushTask(new NGramExtractorRunnable(fi, getTokenizer()));
-
+		//	threadPool.pushTask(new NGramExtractorRunnable(fi, getTokenizer()));
+            new NGramExtractorRunnable(fi,getTokenizer()).run();
 		}
 
-		threadPool.waitForTermination();
+		//threadPool.waitForTermination();
 	}
 
 }

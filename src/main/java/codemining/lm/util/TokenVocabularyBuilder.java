@@ -66,14 +66,15 @@ public class TokenVocabularyBuilder {
 				.create();
 
 		// add everything
-		final ParallelThreadPool threadPool = new ParallelThreadPool();
+		//final ParallelThreadPool threadPool = new ParallelThreadPool();
 
 		for (final File fi : files) {
-			threadPool.pushTask(new VocabularyExtractorRunnable(fi, vocabulary,
-					tokenizer));
+			//threadPool.pushTask(new VocabularyExtractorRunnable(fi, vocabulary,
+					//tokenizer));
+            new VocabularyExtractorRunnable(fi,vocabulary,tokenizer).run();
 		}
 
-		threadPool.waitForTermination();
+		//threadPool.waitForTermination();
 
 		// Remove rare
 		pruneElementsFromMultiset(threshold, vocabulary);
