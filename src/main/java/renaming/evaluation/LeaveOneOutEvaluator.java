@@ -9,18 +9,21 @@ import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
 import codemining.java.codeutils.scopes.ScopeCodeSnippetExtractor;
+import codemining.util.SettingsLoader;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.DirectoryFileFilter;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 
 import renaming.evaluation.NamingEvaluator.ResultObject;
+import renaming.ngram.IdentifierNeighborsNGramLM;
 import renaming.renamers.AbstractIdentifierRenamings;
 import codemining.java.codeutils.scopes.ScopesTUI;
 import codemining.languagetools.IScopeExtractor;
@@ -32,6 +35,7 @@ import codemining.util.serialization.ISerializationStrategy.SerializationExcepti
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import renaming.renamers.BaseIdentifierRenamings;
 
 /**
  * Evaluate renaming by leaving one file out.
@@ -46,59 +50,23 @@ public class LeaveOneOutEvaluator {
      * Test a specific file.
      *
      */
+
     public class ModelEvaluator implements Runnable {
 
         final IScopeExtractor scopeExtractor;
 
         final File testedFile;
 
-        final Collection<File> allFiles;
+        final IdentifierNeighborsNGramLM model;
 
-        final AbstractIdentifierRenamings renamer;
 
-        public ModelEvaluator(final File fileToRetain, Collection<File> alLFiles,
+        public ModelEvaluator(final File fileToRetain,  IdentifierNeighborsNGramLM model,
                               final IScopeExtractor extractor, final String renamerClass,
                               final String renamerConstructorParams) {
-            this.allFiles = alLFiles;
+            this.model = model;
             testedFile = fileToRetain;
             scopeExtractor = extractor;
 
-            try {
-
-                if (renamerConstructorParams == null) {
-                    renamer = (AbstractIdentifierRenamings) Class
-                            .forName(renamerClass)
-                            .getDeclaredConstructor(ITokenizer.class)
-                            .newInstance(tokenizer);
-                } else {
-                    renamer = (AbstractIdentifierRenamings) Class
-                            .forName(renamerClass)
-                            .getDeclaredConstructor(ITokenizer.class,
-                                    String.class)
-                            .newInstance(tokenizer, renamerConstructorParams);
-                }
-            } catch (IllegalArgumentException e) {
-                LOGGER.severe(ExceptionUtils.getFullStackTrace(e));
-                throw new IllegalArgumentException(e);
-            } catch (SecurityException e) {
-                LOGGER.severe(ExceptionUtils.getFullStackTrace(e));
-                throw new IllegalArgumentException(e);
-            } catch (InstantiationException e) {
-                LOGGER.severe(ExceptionUtils.getFullStackTrace(e));
-                throw new IllegalArgumentException(e);
-            } catch (IllegalAccessException e) {
-                LOGGER.severe(ExceptionUtils.getFullStackTrace(e));
-                throw new IllegalArgumentException(e);
-            } catch (InvocationTargetException e) {
-                LOGGER.severe(ExceptionUtils.getFullStackTrace(e));
-                throw new IllegalArgumentException(e);
-            } catch (NoSuchMethodException e) {
-                LOGGER.severe(ExceptionUtils.getFullStackTrace(e));
-                throw new IllegalArgumentException(e);
-            } catch (ClassNotFoundException e) {
-                LOGGER.severe(ExceptionUtils.getFullStackTrace(e));
-                throw new IllegalArgumentException(e);
-            }
         }
 
         @Override
@@ -107,11 +75,9 @@ public class LeaveOneOutEvaluator {
                 final Collection<File> testFiles = Lists.newArrayList();
                 testFiles.add(testedFile);
 
-                final Collection<File> trainFiles = Sets.newTreeSet(allFiles);
-                checkArgument(trainFiles.removeAll(testFiles));
 
-                final NamingEvaluator ve = new NamingEvaluator(trainFiles,
-                        data, renamer);
+                final NamingEvaluator ve = new NamingEvaluator(model,
+                        data);
                 ve.performEvaluation(testFiles, scopeExtractor);
             } catch (Exception e) {
                 LOGGER.warning("Error in file " + testedFile.getAbsolutePath()
@@ -147,7 +113,7 @@ public class LeaveOneOutEvaluator {
      */
     public static void main(String[] args) throws InstantiationException,
             IllegalAccessException, ClassNotFoundException,
-            SerializationException, NoSuchMethodException, InvocationTargetException, InterruptedException {
+            SerializationException, NoSuchMethodException, InvocationTargetException, InterruptedException, IOException {
         if (args.length < 4) {
             System.err
                     .println("Usage <outputFile> <tokenizerClass> variable|method <renamingClass> files...");
@@ -208,17 +174,28 @@ public class LeaveOneOutEvaluator {
     }
 
     public void performEvaluation(final IScopeExtractor scopeExtractor,
-                                  final String renamerClass, final String additionalParams) throws InterruptedException {
+                                  final String renamerClass, final String additionalParams) throws InterruptedException, IOException {
         final ParallelThreadPool threadPool = new ParallelThreadPool();
         writeHeader();
         for (File directory : directories) {
             Collection<File> allFiles = FileUtils.listFiles(directory, tokenizer.getFileFilter(),
                     DirectoryFileFilter.DIRECTORY);
+            IdentifierNeighborsNGramLM model = new IdentifierNeighborsNGramLM((int) SettingsLoader
+                    .getNumericSetting("ngramSize", 5),tokenizer);
+            model.trainModel(allFiles);
             List<Callable<Object>> calls = new ArrayList<Callable<Object>>();
             for (final File fi : allFiles) {
-                //calls.add(Executors.callable(new ModelEvaluator(fi, allFiles, scopeExtractor,
-                //        renamerClass, additionalParams)));
-                new ModelEvaluator(fi, allFiles, scopeExtractor, renamerClass, additionalParams).run();
+                //IdentifierNeighborsNGramLM modelOrig = new IdentifierNeighborsNGramLM((int) SettingsLoader
+                //        .getNumericSetting("ngramSize", 5),tokenizer);
+                //Collection<File> trainFiles = new HashSet<>(allFiles);
+                //trainFiles.remove(fi);
+                //modelOrig.trainModel(trainFiles);
+                //IdentifierNeighborsNGramLM modelNew = new IdentifierNeighborsNGramLM(model);
+                //modelNew.removeNGramsFromFile(fi);
+                //CompareTries.compareTries(modelOrig,modelNew);
+                //calls.add(Executors.callable(new ModelEvaluator(fi, model, scopeExtractor,
+                 //       renamerClass, additionalParams)));
+                new ModelEvaluator(fi, model, scopeExtractor, renamerClass, additionalParams).run();
 
             }
             threadPool.threadPool.invokeAll(calls);

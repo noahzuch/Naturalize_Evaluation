@@ -189,6 +189,11 @@ public class NGramLM extends AbstractNGramLM {
 	}
 
 	@Override
+	public void removeNGramsFromFile(File f) {
+		throw new UnsupportedOperationException("not implemented");
+	}
+
+	@Override
 	public void trainIncrementalModel(final Collection<File> files)
 			throws IOException {
 		trainModel(files);

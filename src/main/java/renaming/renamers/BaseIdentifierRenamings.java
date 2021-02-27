@@ -105,6 +105,32 @@ public class BaseIdentifierRenamings extends AbstractIdentifierRenamings {
 		}
 	}
 
+	public void buildFromExistingModelExcludingFile(IdentifierNeighborsNGramLM model, File fileToRemove) {
+		try {
+		    IdentifierNeighborsNGramLM dict = new IdentifierNeighborsNGramLM(model);
+			dict.removeNGramsFromFile(fileToRemove);
+
+			final AbstractNGramLM ng = (AbstractNGramLM) checkNotNull(
+					smoothedNgramClass,
+					"no smoother class. n-gram model was probably pre-build and should not be trainable.")
+					.getDeclaredConstructor(AbstractNGramLM.class).newInstance(
+							dict);
+			this.ngramLM = ng;
+
+		}catch (final IllegalArgumentException e) {
+			LOGGER.warning(ExceptionUtils.getFullStackTrace(e));
+		} catch (final SecurityException e) {
+			LOGGER.warning(ExceptionUtils.getFullStackTrace(e));
+		} catch (final InstantiationException e) {
+			LOGGER.warning(ExceptionUtils.getFullStackTrace(e));
+		} catch (final IllegalAccessException e) {
+			LOGGER.warning(ExceptionUtils.getFullStackTrace(e));
+		} catch (final InvocationTargetException e) {
+			LOGGER.warning(ExceptionUtils.getFullStackTrace(e));
+		} catch (final NoSuchMethodException e) {
+			LOGGER.warning(ExceptionUtils.getFullStackTrace(e));
+		}
+	}
 	/*
 	 * (non-Javadoc)
 	 * 

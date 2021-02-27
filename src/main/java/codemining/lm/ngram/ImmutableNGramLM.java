@@ -76,6 +76,12 @@ public class ImmutableNGramLM extends AbstractNGramLM {
 	}
 
 	@Override
+	public void removeNGramsFromFile(File f) {
+		throw new UnsupportedOperationException(
+				"Cannot remove ngram from ImmutableNGramDictionary");
+	}
+
+	@Override
 	public void trainIncrementalModel(
 			final Collection<File> fromAllFilesInFolder) throws IOException {
 		throw new UnsupportedOperationException(

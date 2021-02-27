@@ -94,7 +94,9 @@ public class StupidBackoff extends AbstractNGramLM {
 			checkArgument(!Double.isInfinite(mlProb));
 			return mlProb;
 		} else {
-			checkArgument(ngram.size() > 1);
+			if(ngram.size() <= 1) {
+				checkArgument(ngram.size() > 1);
+			}
 			return 0.4 * getProbabilityFor(ngram.getSuffix());
 
 		}
@@ -104,6 +106,13 @@ public class StupidBackoff extends AbstractNGramLM {
 	public void removeNgram(final NGram<String> ngram) {
 		throw new UnsupportedOperationException(
 				"StupidBackoff is an immutable Language Model");
+	}
+
+	@Override
+	public void removeNGramsFromFile(File f) {
+		throw new UnsupportedOperationException(
+				"StupidBackoff is an immutable Language Model");
+
 	}
 
 	@Override

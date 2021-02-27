@@ -72,6 +72,13 @@ public class LaplaceSmoother extends AbstractNGramLM {
 	}
 
 	@Override
+	public void removeNGramsFromFile(File f) {
+
+		throw new UnsupportedOperationException(
+				"LaplaceSmoother is an immutable Language Model");
+	}
+
+	@Override
 	public void trainIncrementalModel(final Collection<File> files)
 			throws IOException {
 		throw new UnsupportedOperationException(

@@ -22,7 +22,7 @@ import com.google.common.collect.Lists;
  * @param <T>
  *            the type of the trie nodes (where the branching happens).
  */
-public class Trie<T extends Comparable<T>> implements Serializable {
+public class Trie<T extends Comparable<T> & Serializable> implements Serializable {
 
 	/**
 	 * Struct class, representing the node of a trie.
@@ -278,7 +278,7 @@ public class Trie<T extends Comparable<T>> implements Serializable {
 
 			for (final T tokId : elementSequence) {
 				if (!currentUnit.prods.containsKey(tokId)) {
-					currentUnit.prods.put(tokId, new TrieNode<T>());
+					throw new IllegalStateException("Ngram to be removed does not exist");//currentUnit.prods.put(tokId, new TrieNode<T>());
 				}
 				final TrieNode<T> next = currentUnit.prods.get(tokId);
 				next.count--;
@@ -286,6 +286,20 @@ public class Trie<T extends Comparable<T>> implements Serializable {
 				currentUnit = next;
 			}
 			currentUnit.terminateHere--;
+
+			currentUnit = root;
+			for (final T tokId : elementSequence) {
+				if (!currentUnit.prods.containsKey(tokId)) {
+					throw new IllegalStateException("Ngram to be removed does not exist");//currentUnit.prods.put(tokId, new TrieNode<T>());
+				}
+				final TrieNode<T> next = currentUnit.prods.get(tokId);
+				if(next.count == 0){
+					currentUnit.prods.remove(tokId);
+					break;//We can stop here as the tree is already cut
+				}else{
+					currentUnit = next;
+				}
+            }
 		} finally {
 			editLock.unlock();
 		}

@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import codemining.lm.ngram.Trie.TrieNode;
 
@@ -29,7 +30,7 @@ import com.google.common.collect.Sets;
  *
  */
 @DefaultSerializer(JavaSerializer.class)
-public class LongTrie<K> implements Serializable {
+public class LongTrie<K extends Serializable> implements Serializable {
 
 	private final Trie<Long> baseTrie = new Trie<Long>(null);
 
@@ -38,7 +39,7 @@ public class LongTrie<K> implements Serializable {
 	/**
 	 * An alphabet containing a mapping of Keys to Strings.
 	 */
-	private final BiMap<K, Long> alphabet;
+	public final BiMap<K, Long> alphabet;
 
 	private long nextId;
 
@@ -265,6 +266,7 @@ public class LongTrie<K> implements Serializable {
 
 		baseTrie.remove(keys);
 	}
+
 
 	/**
 	 * Substitute all the tokens in the current ngram with UNK when they do not

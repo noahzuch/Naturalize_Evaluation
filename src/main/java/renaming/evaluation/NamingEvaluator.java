@@ -21,7 +21,9 @@ import org.apache.commons.io.filefilter.DirectoryFileFilter;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang.math.RandomUtils;
 
+import renaming.ngram.IdentifierNeighborsNGramLM;
 import renaming.renamers.AbstractIdentifierRenamings;
+import renaming.renamers.BaseIdentifierRenamings;
 import renaming.renamers.INGramIdentifierRenamer.Renaming;
 import codemining.java.codeutils.scopes.ScopesTUI;
 import codemining.languagetools.IScopeExtractor;
@@ -143,10 +145,10 @@ public class NamingEvaluator {
 			.getName());
 
 	private static final boolean DEBUG_RENAMINGS = SettingsLoader
-			.getBooleanSetting("DEBUG", true);
+			.getBooleanSetting("DEBUG", false);
 
 	private static final boolean PER_FILE_STATS = SettingsLoader
-			.getBooleanSetting("OutputFileStats", true);
+			.getBooleanSetting("OutputFileStats", false);
 
 	private static FileOutputStream debugFile;
 	private static FileOutputStream fileStatsOutput;
@@ -195,87 +197,25 @@ public class NamingEvaluator {
 		}
 	}
 
-	/**
-	 * @param args
-	 * @throws IOException
-	 * @throws ClassNotFoundException
-	 * @throws SerializationException
-	 * @throws NoSuchMethodException
-	 * @throws InvocationTargetException
-	 * @throws IllegalAccessException
-	 * @throws InstantiationException
-	 * @throws SecurityException
-	 * @throws IllegalArgumentException
-	 */
-	public static void main(final String[] args) throws IOException,
-			SerializationException, IllegalArgumentException,
-			SecurityException, InstantiationException, IllegalAccessException,
-			InvocationTargetException, NoSuchMethodException,
-			ClassNotFoundException {
-		if (args.length != 4) {
-			System.err
-					.println("Usage <lmModel> <folder> variable|method <renamerClass> [renamerArgument]");
-			return;
-		}
 
-		final File directory = new File(args[1]);
-
-		LOGGER.info("Reading LM...");
-		final AbstractNGramLM langModel = ((AbstractNGramLM) Serializer
-				.getSerializer().deserializeFrom(args[0]));
-
-		final ResultObject[] data = new ResultObject[ScopeType.values().length];
-		for (int i = 0; i < data.length; i++) {
-			data[i] = new ResultObject();
-		}
-
-		final AbstractIdentifierRenamings renamer;
-		if (args.length == 4) {
-			renamer = (AbstractIdentifierRenamings) Class.forName(args[3])
-					.getDeclaredConstructor(AbstractNGramLM.class)
-					.newInstance(langModel);
-		} else {
-			renamer = (AbstractIdentifierRenamings) Class
-					.forName(args[3])
-					.getDeclaredConstructor(AbstractNGramLM.class, String.class)
-					.newInstance(langModel, args[4]);
-		}
-
-		final NamingEvaluator ve = new NamingEvaluator(renamer, data);
-
-		final IScopeExtractor scopeExtractor = ScopesTUI
-				.getScopeExtractorByName(args[2]);
-
-		ve.performEvaluation(
-				FileUtils.listFiles(directory, langModel.getTokenizer()
-						.getFileFilter(), DirectoryFileFilter.DIRECTORY),
-				scopeExtractor);
-
-	}
-
-	final AbstractIdentifierRenamings renamer;
+	final IdentifierNeighborsNGramLM model;
 
 	/**
 	 * An array of result objects, one for each scope type.
 	 */
 	private final ResultObject[] data;
 
-	public NamingEvaluator(final AbstractIdentifierRenamings renamer,
+	public NamingEvaluator(IdentifierNeighborsNGramLM model,
 			final ResultObject[] dataObject) {
-		this.renamer = renamer;
+		this.model = model;
 		data = dataObject;
 	}
 
-	public NamingEvaluator(final Collection<File> files,
-			final ResultObject[] dataObject,
-			final AbstractIdentifierRenamings renamer) {
-		this.renamer = renamer;
-		renamer.buildRenamingModel(files);
-		data = dataObject;
-	}
 
 	final void evaluateRenamings(final Multimap<Scope, String> m,
 			final File file) {
+		BaseIdentifierRenamings singleFileRenamings = new BaseIdentifierRenamings(model.getTokenizer());
+		singleFileRenamings.buildFromExistingModelExcludingFile(model,file);
 		final ResultObject[] fileResults = new ResultObject[ScopeType.values().length];
 		for (int i = 0; i < fileResults.length; i++) {
 			fileResults[i] = new ResultObject();
@@ -283,7 +223,7 @@ public class NamingEvaluator {
 
 		for (final Entry<Scope, String> variable : m.entries()) {
 			try {
-				evaluateSingleRenaming(fileResults, variable);
+				evaluateSingleRenaming(singleFileRenamings, fileResults, variable);
 			} catch (final Throwable e) {
 				LOGGER.warning("Failed to evaluate renaming " + variable + " "
 						+ ExceptionUtils.getFullStackTrace(e));
@@ -322,7 +262,7 @@ public class NamingEvaluator {
 
 	/**
 	 */
-	public void evaluateSingleRenaming(final ResultObject[] results,
+	public void evaluateSingleRenaming(final AbstractIdentifierRenamings renamer, final ResultObject[] results,
 			final Entry<Scope, String> identifier) {
 		final SortedSet<Renaming> renamings = renamer.getRenamings(
 				identifier.getKey(), identifier.getValue());

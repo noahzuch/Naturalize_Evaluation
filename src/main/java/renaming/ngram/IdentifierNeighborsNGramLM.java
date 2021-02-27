@@ -2,12 +2,12 @@ package renaming.ngram;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.List;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.nio.file.Files;
+import java.util.*;
+import java.util.function.Consumer;
 import java.util.logging.Logger;
 
+import codemining.util.ObjectCloner;
 import org.apache.commons.lang.exception.ExceptionUtils;
 
 import codemining.languagetools.ITokenizer;
@@ -18,7 +18,6 @@ import codemining.lm.ngram.ImmutableNGramLM;
 import codemining.lm.ngram.NGram;
 import codemining.lm.util.TokenVocabularyBuilder;
 import codemining.util.SettingsLoader;
-import codemining.util.parallel.ParallelThreadPool;
 
 import com.google.common.collect.Lists;
 
@@ -40,12 +39,16 @@ public class IdentifierNeighborsNGramLM extends AbstractNGramLM {
 
 		final File codeFile;
 
+
 		final ITokenizer tokenizer;
 
+		final Consumer<NGram<String>> consumer;
+
 		public NGramExtractorRunnable(final File file,
-				final ITokenizer tokenizerModule) {
+									  final ITokenizer tokenizerModule, Consumer<NGram<String>> consumer) {
 			codeFile = file;
 			tokenizer = tokenizerModule;
+			this.consumer = consumer;
 		}
 
 		public void addRelevantNGrams(final List<FullToken> lst) {
@@ -70,7 +73,7 @@ public class IdentifierNeighborsNGramLM extends AbstractNGramLM {
 				final NGram<String> ngram = NGram.constructNgramAt(i, sentence,
 						getN());
 				if (ngram.size() > 1) {
-					addNgram(ngram, false);
+					consumer.accept(ngram);
 				}
 			}
 
@@ -101,6 +104,7 @@ public class IdentifierNeighborsNGramLM extends AbstractNGramLM {
 	public static final int CLEAN_VOCABULARY_THRESHOLD = (int) SettingsLoader
 			.getNumericSetting("CleanVocabularyThreshold", 1);
 
+	private Map<File, Set<String>> trainedVocabularyMap;
 	/**
 	 * Constructor.
 	 * 
@@ -110,6 +114,16 @@ public class IdentifierNeighborsNGramLM extends AbstractNGramLM {
 	public IdentifierNeighborsNGramLM(final int size,
 			final ITokenizer tokenizerModule) {
 		super(size, tokenizerModule);
+	}
+
+	public IdentifierNeighborsNGramLM(IdentifierNeighborsNGramLM original){
+		super(original);
+		this.trainedVocabularyMap=original.trainedVocabularyMap;
+		try {
+			trie = ObjectCloner.deepCopy(trie); // deep copy the trie so that we can change it
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	/**
@@ -188,6 +202,19 @@ public class IdentifierNeighborsNGramLM extends AbstractNGramLM {
 	}
 
 	@Override
+	public void removeNGramsFromFile(File f) {
+		new NGramExtractorRunnable(f,getTokenizer(),this::removeNgram).run();
+		Set<String> vocabularyInFile = trainedVocabularyMap.get(f);
+		Set<String> uniqueVocabInFile = new HashSet<>(vocabularyInFile);
+		for (Set<String> vocab : trainedVocabularyMap.values()) {
+			if(vocab != vocabularyInFile){
+				uniqueVocabInFile.removeAll(vocab);
+			}
+		}
+		trie.alphabet.keySet().removeAll(uniqueVocabInFile);
+	}
+
+	@Override
 	public void trainIncrementalModel(final Collection<File> files)
 			throws IOException {
 		trainModel(files);
@@ -197,8 +224,11 @@ public class IdentifierNeighborsNGramLM extends AbstractNGramLM {
 	@Override
 	public void trainModel(final Collection<File> files) throws IOException {
 		LOGGER.info("Building vocabulary...");
-		trie.buildVocabularySymbols(TokenVocabularyBuilder.buildVocabulary(
-				files, getTokenizer(), CLEAN_VOCABULARY_THRESHOLD));
+		trainedVocabularyMap = TokenVocabularyBuilder.buildVocabularyPerFile(files,getTokenizer(),CLEAN_VOCABULARY_THRESHOLD);
+		trie.buildVocabularySymbols(trainedVocabularyMap.values().stream().reduce(new HashSet<>(),(s1,s2)->{
+			s1.addAll(s2);
+			return s1;
+		}));
 
 		LOGGER.info("Vocabulary Built. Counting n-grams");
 		trainModel(files, false, false);
@@ -215,7 +245,7 @@ public class IdentifierNeighborsNGramLM extends AbstractNGramLM {
 
 		for (final File fi : files) {
 		//	threadPool.pushTask(new NGramExtractorRunnable(fi, getTokenizer()));
-            new NGramExtractorRunnable(fi,getTokenizer()).run();
+            new NGramExtractorRunnable(fi,getTokenizer(), nGram -> addNgram(nGram,false)).run();
 		}
 
 		//threadPool.waitForTermination();

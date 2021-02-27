@@ -243,7 +243,11 @@ public abstract class AbstractNGramLM implements
 		} else {
 			for (final Long key : sNode.prods.keySet()) {
 				final String token = globalTrie.getSymbolFromKey(key);
-				renamings.add(token);
+				try {
+					renamings.add(token);
+				}catch(NullPointerException e){
+					System.out.println("No");
+				}
 			}
 		}
 		return renamings;
@@ -419,5 +423,7 @@ public abstract class AbstractNGramLM implements
 	public String toString() {
 		return trie.toString();
 	}
+
+	public abstract void removeNGramsFromFile(File f);
 
 }

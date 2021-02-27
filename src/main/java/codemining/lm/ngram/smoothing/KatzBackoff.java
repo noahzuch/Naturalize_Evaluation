@@ -53,6 +53,7 @@ public class KatzBackoff extends AbstractNGramLM {
 
 	public KatzBackoff(final AbstractNGramLM original) {
 		super(original);
+		System.out.println("Katz");
 		computeKatzCountsOfCounts();
 		katzCounts = Maps.newTreeMap();
 		for (int i = 1; i <= getN(); i++) {
@@ -317,6 +318,13 @@ public class KatzBackoff extends AbstractNGramLM {
 	public void removeNgram(final NGram<String> ngram) {
 		throw new UnsupportedOperationException(
 				"KatzSmoother is an immutable Language Model");
+	}
+
+	@Override
+	public void removeNGramsFromFile(File f) {
+		throw new UnsupportedOperationException(
+				"KatzSmoother is an immutable Language Model");
+
 	}
 
 	@Override
