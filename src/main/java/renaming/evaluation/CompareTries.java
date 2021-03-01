@@ -18,7 +18,14 @@ public class CompareTries {
     }
 
     private static void compareTrieNode(Trie.TrieNode<Long> node1, Trie.TrieNode<Long> node2){
-
+        if(node1.count != node2.count || node1.terminateHere != node2.terminateHere){
+            System.out.println("Count term is different");
+        }else{
+            compareSets(node1.prods.keySet(),node2.prods.keySet());
+            for (Long prod : node1.prods.keySet()) {
+                compareTrieNode(node1.prods.get(prod),node2.prods.get(prod));
+            }
+        }
     }
 
     private static <E> void compareSets(Set<E> set1, Set<E> set2){

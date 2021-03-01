@@ -193,9 +193,9 @@ public class LeaveOneOutEvaluator {
                 //IdentifierNeighborsNGramLM modelNew = new IdentifierNeighborsNGramLM(model);
                 //modelNew.removeNGramsFromFile(fi);
                 //CompareTries.compareTries(modelOrig,modelNew);
-                //calls.add(Executors.callable(new ModelEvaluator(fi, model, scopeExtractor,
-                 //       renamerClass, additionalParams)));
-                new ModelEvaluator(fi, model, scopeExtractor, renamerClass, additionalParams).run();
+                calls.add(Executors.callable(new ModelEvaluator(fi, model, scopeExtractor,
+                       renamerClass, additionalParams)));
+                //new ModelEvaluator(fi, model, scopeExtractor, renamerClass, additionalParams).run();
 
             }
             threadPool.threadPool.invokeAll(calls);
@@ -204,6 +204,7 @@ public class LeaveOneOutEvaluator {
                 data[i] = new ResultObject();
             }
         }
+        threadPool.waitForTermination();
 
         System.out.println("||||||||||||||||||||||| FINAL ||||||||||||||||||||||||||");
     }
